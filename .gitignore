@@ -1,4 +1,13 @@
+# ======================================
+# .gitignore
+# Author: ChatGPT (OpenAI GPT-5)
+# Created: 2025-09-28
+# Description: 通用的 .gitignore 文件，适用于 Go 项目和 React 项目
+# ======================================
+
+# ===============================
 # Logs
+# ===============================
 logs
 *.log
 npm-debug.log*
@@ -7,18 +16,65 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# ===============================
+# Go
+# ===============================
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries & output
+*.test
+*.out
+
+# Go build cache & modules
+/go.sum
+/go.work.sum
+/vendor/
+/bin/
+/build/
+/dist/
+
+# ===============================
+# React / Node.js
+# ===============================
 node_modules
 dist
 dist-ssr
+.parcel-cache/
+.next/
+out/
+vite.config.ts.timestamp*
+
+# Env files
+.env.local
+.env.*.local
 *.local
 
-# Editor directories and files
+# ===============================
+# OS / Editor
+# ===============================
+.DS_Store
+Thumbs.db
+
+# VSCode
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+*.code-workspace
+
+# JetBrains IDEs (GoLand, WebStorm, etc.)
+.idea/
+
+# Visual Studio / Windows
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
+
+# Vim / Swap
+*.swp
+*.swo
 *.sw?
