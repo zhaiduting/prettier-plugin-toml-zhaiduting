@@ -1,17 +1,26 @@
 {
   "name": "prettier-plugin-toml-zhaiduting",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "0.1.0",
+  "description": "A Prettier plugin for TOML files.",
+  "main": "dist/index.js",
+  "types": "index.d.ts",
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "toml-eslint-parser": "^0.10.0"
+  },
   "devDependencies": {
-    "prettier": "^3.6.2",
-    "toml-eslint-parser": "^0.10.0",
     "typescript": "~5.8.3",
     "vite": "^7.1.7"
+  },
+  "peerDependencies": {
+    "prettier": ">=3.0.0"
   }
 }
