@@ -37,10 +37,10 @@ async function runTest() {
         if ('parse' in parser) {
             // @ts-ignore
             const ast = parser.parse(testInput);
-            console.log(parser)
 
             // 使用 JSON.stringify 格式化输出，设置 null, 2 方便阅读
             const astJson = safeStringify(ast);
+            console.log(astJson)
             astOutputElement.textContent = astJson;
             console.log("✅ Parser Test (AST Generated).");
         }

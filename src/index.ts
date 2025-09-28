@@ -1,7 +1,7 @@
 import type {Parser, Printer} from 'prettier';
 import * as prettier from 'prettier'
 import {concat} from './prettier-compat.ts'
-// 导入 toml-eslint-parser
+// 导入 toml-eslint-parser，用于 AST 解析
 import {parseTOML} from "toml-eslint-parser";
 import type {TOMLNode} from "toml-eslint-parser/lib/ast/ast";
 
@@ -9,24 +9,30 @@ const {
     indent, group, line, hardline, softline, join
 } = prettier.doc.builders
 
+/**
+ * 插件支持的语言定义
+ */
 export const languages = [
     {
         extensions: ['.toml'],
         name: 'TOML',
-        parsers: ['toml-parse']
+        parsers: ['toml-parse'] // 对应的解析器名称
     }
 ];
 
-// --- locStart 和 locEnd (正确) ---
+// --- AST 位置信息获取函数 ---
+// 提取 toml-eslint-parser 提供的 range 属性
 const locStart: Parser<TOMLNode>['locStart'] = (node: TOMLNode) => node.range[0];
 const locEnd: Parser<TOMLNode>['locEnd'] = (node: TOMLNode) => node.range[1];
-// ----------------------------------
 
+/**
+ * 插件支持的解析器定义
+ */
 export const parsers = {
     'toml-parse': {
         parse: (code: string) => {
             try {
-                // ✅ 修复 TS2554: 传入第二个参数 {}
+                // 确保传入第二个参数 {} 兼容 toml-eslint-parser API
                 return parseTOML(code, {});
             } catch (error) {
                 throw error;
@@ -38,23 +44,33 @@ export const parsers = {
     } as Parser<any>
 };
 
-// --- 核心修复：重写 printToml 以兼容新的 AST 结构 ---
+/**
+ * 核心打印函数：将 TOML AST 转换成 Prettier Docs
+ */
 const printToml: Printer['print'] = (path, _options, print) => {
     const node = path.node;
+
+    // 关键防护：防止 node 或 node.type 为空 (处理 undefined 错误)
+    if (!node || typeof node.type !== 'string') {
+        return '';
+    }
 
     if (Array.isArray(node)) {
         return concat(path.map(print));
     }
 
     switch (node.type) {
-        // 1. AST 根节点
-        case 'Program':
-            // 打印 Program 的子节点 (即整个文件内容)
-            return path.map(print, 'body');
+        // --- 1. 结构和容器节点 ---
 
-        // 2. 顶级表和子表 (例如 [owner], [servers.alpha])
+        // 根节点
+        case 'Program':
+            return concat(path.map(print, 'body'));
+
+        // 顶层表（隐式）
         case 'TOMLTopLevelTable':
             return concat(path.map(print, 'body'));
+
+        // 标准表和数组表 (例如 [owner], [[clients.data]])
         case 'TOMLTable':
         case 'TOMLArrayTable':
             const isArrayTable = node.type === 'TOMLArrayTable';
@@ -62,67 +78,76 @@ const printToml: Printer['print'] = (path, _options, print) => {
             const closeBrackets = isArrayTable ? ']]' : ']';
 
             return concat([
-                // 表之间添加空行
-                hardline, hardline,
+                hardline, hardline, // 表之间添加空行
                 openBrackets,
                 path.call(print, 'key'), // 打印表名 (TOMLKey 节点)
                 closeBrackets,
                 hardline,
-                // 打印表内的键值对
-                concat(path.map(print, 'body'))
+                concat(path.map(print, 'body')) // 打印表体内容
             ]);
 
-        // 3. 键值对 (例如 name = "Tom Preston-Werner")
+        // --- 2. 键名和赋值节点 ---
+
+        // 键值对 (例如 name = "Tom")
         case 'TOMLKeyValue':
             return concat([
-                path.call(print, 'key'), // 键 (例如 name)
+                // 增加子节点防护
+                node.key ? path.call(print, 'key') : '',
                 ' = ',
-                path.call(print, 'value'), // 值 (例如 "Tom Preston-Werner")
+                node.value ? path.call(print, 'value') : '',
                 hardline
             ]);
-            
+
+        // 键路径容器 (例如 servers.alpha)
+        case 'TOMLKey':
+            return join('.', path.map(print, 'keys'));
+
+        // 键名组成部分 (裸键名/带引号的键名)
+        case 'TOMLBare':
+        case 'TOMLQuotedKey':
+            return node.name;
+
+        // --- 3. 值节点 ---
+
+        // 原始值 (字符串、数字、日期等)
         case 'TOMLValue':
-            // 最终的健壮修复：
-            // 1. 优先使用 node.raw (包含格式)。
-            // 2. 如果 node.raw 不存在 (导致 undefined 错误)，回退到 node.value。
-            // 3. 必须使用 String() 转换，确保返回值是一个有效的 Doc (字符串)。
-            //    如果 node.value 是 null 或数字等，String() 能正确处理。
+            // 修复 'undefined' 崩溃问题: 优先使用 raw/value，并确保返回字符串 Doc
             return String(node.raw || node.value || '');
 
-        // 4. 值 (字符串、数字、日期、布尔值)
-        case 'Literal':
-            // node.raw 包含原始值，例如 "Tom Preston-Werner" (含引号) 或 1979 (数字)
-            return node.raw;
-
-        // 5. 数组 (例如 ports = [ 8001, 8001, 8002 ])
-        case 'ArrayExpression':
+        // 数组 (例如 ports = [ 8001, 8002 ])
+        case 'TOMLArray':
             return group(concat([
                 '[',
                 indent(concat([
                     softline,
-                    // 数组项在 'elements' 属性中，用逗号和换行符连接
+                    // 遍历 'elements' 属性
                     join(concat([',', line]), path.map(print, 'elements'))
                 ])),
                 softline,
                 ']'
             ]));
 
-        // 6. 键名 (例如 name)
-        case 'TOMLBare':
-        case 'TOMLQuotedKey': // 带引号的键名 ("quoted key")
-            // 裸键名通常在 'name' 属性中
-            return node.name;
-        case 'TOMLKey':
-            // TOMLKey 是一个包含键路径的容器，我们需要打印其 'keys' 数组
-            return join('.', path.map(print, 'keys'));
+        // 内联表 (例如 inline = {key=value})
+        case 'TOMLInlineTable':
+            return group(concat([
+                '{',
+                indent(concat([
+                    softline,
+                    join(concat([',', line]), path.map(print, 'body'))
+                ])),
+                softline,
+                '}'
+            ]));
 
+        // --- 4. 默认/未知节点 ---
         default:
-            // 默认返回空字符串，但最好在这里捕获未处理的类型
-            // console.warn(`Unhandled node type: ${node.type}`);
             return '';
     }
 }
 
+/**
+ * 插件提供的打印器
+ */
 export const printers = {
     'toml-ast': {
         print: printToml

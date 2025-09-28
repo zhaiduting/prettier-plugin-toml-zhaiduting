@@ -1,0 +1,4 @@
+{
+  "printWidth": 10,
+  "plugins": ["./src/index.ts"]
+}
