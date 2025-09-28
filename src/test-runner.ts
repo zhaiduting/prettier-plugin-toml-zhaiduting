@@ -4,7 +4,7 @@ import './style.css'; // 导入样式表
 import {format} from 'prettier';
 import * as tomlPlugin from './index'; // 导入您的插件核心
 import testInput from './example.toml?raw'; // 导入 TOML 文件内容
-
+import {safeStringify} from './safeStringify.ts';
 // --- HTML 元素 ID ---
 const AST_OUTPUT_ID = 'ast-output';
 const FORMATTED_OUTPUT_ID = 'formatted-output';
@@ -35,10 +35,12 @@ async function runTest() {
         // -----------------------------------------------------------------
         const parser = tomlPlugin.parsers['toml-parse'];
         if ('parse' in parser) {
+            // @ts-ignore
             const ast = parser.parse(testInput);
+            console.log(parser)
 
             // 使用 JSON.stringify 格式化输出，设置 null, 2 方便阅读
-            const astJson = JSON.stringify(ast, null, 2);
+            const astJson = safeStringify(ast);
             astOutputElement.textContent = astJson;
             console.log("✅ Parser Test (AST Generated).");
         }

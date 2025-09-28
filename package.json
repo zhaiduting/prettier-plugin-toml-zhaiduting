@@ -10,10 +10,8 @@
   },
   "devDependencies": {
     "prettier": "^3.6.2",
+    "toml-eslint-parser": "^0.10.0",
     "typescript": "~5.8.3",
     "vite": "^7.1.7"
-  },
-  "dependencies": {
-    "js-toml": "^1.0.2"
   }
 }
