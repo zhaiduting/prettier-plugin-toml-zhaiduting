@@ -54,16 +54,22 @@ const printToml: Printer['print'] = (path, _options, print) => {
 
         // 2. 顶级表和子表 (例如 [owner], [servers.alpha])
         case 'TOMLTopLevelTable':
+            return concat(path.map(print, 'body'));
         case 'TOMLTable':
         case 'TOMLArrayTable':
+            const isArrayTable = node.type === 'TOMLArrayTable';
+            const openBrackets = isArrayTable ? '[[' : '[';
+            const closeBrackets = isArrayTable ? ']]' : ']';
+
             return concat([
-                hardline,
-                '[',
-                path.call(print, 'key'), // 打印表名 (如 owner)
-                ']',
+                // 表之间添加空行
+                hardline, hardline,
+                openBrackets,
+                path.call(print, 'key'), // 打印表名 (TOMLKey 节点)
+                closeBrackets,
                 hardline,
                 // 打印表内的键值对
-                path.map(print, 'body')
+                concat(path.map(print, 'body'))
             ]);
 
         // 3. 键值对 (例如 name = "Tom Preston-Werner")
@@ -74,6 +80,14 @@ const printToml: Printer['print'] = (path, _options, print) => {
                 path.call(print, 'value'), // 值 (例如 "Tom Preston-Werner")
                 hardline
             ]);
+            
+        case 'TOMLValue':
+            // 最终的健壮修复：
+            // 1. 优先使用 node.raw (包含格式)。
+            // 2. 如果 node.raw 不存在 (导致 undefined 错误)，回退到 node.value。
+            // 3. 必须使用 String() 转换，确保返回值是一个有效的 Doc (字符串)。
+            //    如果 node.value 是 null 或数字等，String() 能正确处理。
+            return String(node.raw || node.value || '');
 
         // 4. 值 (字符串、数字、日期、布尔值)
         case 'Literal':
@@ -95,6 +109,7 @@ const printToml: Printer['print'] = (path, _options, print) => {
 
         // 6. 键名 (例如 name)
         case 'TOMLBare':
+        case 'TOMLQuotedKey': // 带引号的键名 ("quoted key")
             // 裸键名通常在 'name' 属性中
             return node.name;
         case 'TOMLKey':
