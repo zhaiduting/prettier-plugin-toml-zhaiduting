@@ -3,10 +3,9 @@
   "version": "0.1.0",
   "description": "A Prettier plugin for TOML files.",
   "main": "dist/index.js",
-  "types": "index.d.ts",
+  "types": "dist/index.d.ts",
   "files": [
-    "dist",
-    "index.d.ts"
+    "dist"
   ],
   "scripts": {
     "dev": "vite",
@@ -14,7 +13,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "toml-eslint-parser": "^0.10.0"
+    "toml-eslint-parser": "^0.10.0",
+    "vite-plugin-dts": "^4.5.4"
   },
   "devDependencies": {
     "typescript": "~5.8.3",

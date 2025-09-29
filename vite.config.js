@@ -1,5 +1,6 @@
 // vite.config.js
 import {defineConfig} from 'vite';
+import dts from 'vite-plugin-dts';
 
 export default defineConfig({
     build: {
@@ -9,7 +10,7 @@ export default defineConfig({
             name: 'PrettierPluginTomlZhaiduting',
             // 我们只输出 CJS 格式
             formats: ['cjs'],
-            fileName: (format) => `index.js`, // 确保输出文件名就是 index.js
+            fileName: () => `index.js`, // 确保输出文件名就是 index.js
         },
         // 关闭 CSS 提取等不必要的步骤
         cssCodeSplit: false,
@@ -21,5 +22,11 @@ export default defineConfig({
                 'toml-eslint-parser' // 您的插件运行时依赖
             ],
         },
-    }
+    },
+    plugins: [
+        dts({
+            insertTypesEntry: true, // 在 dist/ 自动生成 index.d.ts
+            include: ['src/index.ts'],
+        }),
+    ],
 });
